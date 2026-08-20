@@ -16,18 +16,21 @@ import { statPatch } from '../src/stat.ts'
 import * as help from './helpers.ts'
 
 /** Minimal fake context that records registrations like the harness registry. */
-function fakeContext(): { ctx: ToolContext; defs: ToolDefinition[] } {
+function fakeContext(): { ctx: ToolContext; defs: ToolDefinition[]; disposed: () => number } {
   const defs: ToolDefinition[] = []
+  let disposedCount = 0
   const ctx: ToolContext = {
     tools: {
       register: (def: ToolDefinition) => {
         defs.push(def)
-        return () => {}
+        return () => {
+          disposedCount++
+        }
       },
     },
     get: () => undefined,
   }
-  return { ctx, defs }
+  return { ctx, defs, disposed: () => disposedCount }
 }
 
 /** Validate a value against a closed `additionalProperties:false` schema. */
@@ -61,6 +64,17 @@ function assertMatchesSchema(value: Record<string, unknown>, schema: { propertie
     }
   }
 }
+
+test('apply() returns a disposer that unregisters the four tools on unmount', () => {
+  const { ctx, defs, disposed } = fakeContext()
+  const dispose = apply(ctx, {})
+  assert.equal(typeof dispose, 'function')
+  assert.equal(defs.length, 4)
+  assert.equal(disposed(), 0)
+  dispose()
+  // the returned disposer invokes every tool's registration disposer exactly once
+  assert.equal(disposed(), 4)
+})
 
 test('apply() registers exactly the four patch tools with the required parameter', () => {
   const { ctx, defs } = fakeContext()
