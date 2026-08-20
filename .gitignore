@@ -1,4 +1,6 @@
 node_modules/
 build/
+.npm/
+*.tgz
 *.log
 .dsh-patch-undo.json
