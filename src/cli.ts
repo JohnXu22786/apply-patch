@@ -15,6 +15,7 @@
 
 import { applyPatchText, applyUndo } from './apply.ts'
 import type { ApplyReport } from './apply.ts'
+import { VERSION } from './index.ts'
 import { PatchError } from './errors.ts'
 import { readJournal } from './journal.ts'
 import { parsePatch } from './parse.ts'
@@ -51,6 +52,7 @@ Options
   --strict-sha      treat index-line SHA-1 mismatches as hard conflicts
   --out <file>      write reverse output to a file instead of stdout
   --json            machine-readable JSON output on stdout
+  --version         print the tool version and exit
   --help            show this help
 
 Exit codes: 0 success, 1 patch could not be applied, 2 usage error.
@@ -72,7 +74,7 @@ const BOOLEAN_FLAGS = new Set([
 ])
 const VALUE_FLAGS = new Set(['--root', '--undo-file', '--out', '--fuzz'])
 
-function parseArgs(argv: string[], cwd: string): { command: string | null; file: string | null; opts: Options; help: boolean } {
+function parseArgs(argv: string[], cwd: string): { command: string | null; file: string | null; opts: Options; help: boolean; version: boolean } {
   const opts: Options = {
     root: cwd,
     dryRun: false,
@@ -86,11 +88,16 @@ function parseArgs(argv: string[], cwd: string): { command: string | null; file:
   let command: string | null = null
   let file: string | null = null
   let help = false
+  let version = false
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!
-    if (arg === '--help') {
+    if (arg === '--help' || arg === '-h') {
       help = true
+      continue
+    }
+    if (arg === '--version' || arg === '-v') {
+      version = true
       continue
     }
     if (arg.startsWith('--')) {      const eq = arg.indexOf('=')
@@ -127,7 +134,7 @@ function parseArgs(argv: string[], cwd: string): { command: string | null; file:
     else if (file === null) file = arg
     else throw new UsageError(`unexpected extra argument: ${arg}`)
   }
-  return { command, file, opts, help }
+  return { command, file, opts, help, version }
 }
 class UsageError extends Error {}
 
@@ -141,7 +148,12 @@ export async function run(argv: string[], streams: CliStreams, env?: { cwd?: str
     streams.err(`dsh-patch: ${(error as Error).message}\n\n${USAGE}`)
     return 2
   }
-  const { command, file, opts, help } = parsed
+  const { command, file, opts, help, version } = parsed
+
+  if (version) {
+    streams.out(`dsh-patch ${VERSION}`)
+    return 0
+  }
 
   if (help || command === null || command === 'help') {
     streams.out(USAGE)
