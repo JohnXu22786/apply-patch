@@ -1,6 +1,10 @@
 # dsh-patch-apply
 
+[![CI](https://github.com/JohnXu22786/apply-patch/actions/workflows/ci.yml/badge.svg)](https://github.com/JohnXu22786/apply-patch/actions/workflows/ci.yml)
+
 **Apply structured unified diffs (git format) to the real filesystem inside [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) — and anywhere else Node runs.**
+
+> **中文文档：[README.zh.md](README.zh.md)**
 
 dsh ships string-level `edit`/`write` tools but no structured diff-applier that **writes** to disk. `dsh-patch-apply` fills that gap: it parses a unified diff, applies every hunk with fuzzy context tolerance and line-offset correction, guards the whole operation so it is **all-or-nothing**, and records a **reverse patch** for byte-exact undo.
 
@@ -34,6 +38,9 @@ registers the four tools on the harness tool registry (`ctx.tools`).
 ```sh
 # published to a registry
 dsh plugin --profile <name> add dsh-patch-apply
+
+# straight from this repository
+dsh plugin --profile <name> add github:JohnXu22786/apply-patch
 
 # or from a local checkout
 dsh plugin --profile <name> add /path/to/apply-patch

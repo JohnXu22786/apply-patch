@@ -2,6 +2,8 @@
 
 **在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）以及任何 Node 运行时中，将结构化 unified diff（git 格式）应用到真实文件系统。**
 
+> **English documentation: [README.md](README.md)**
+
 dsh 官方只提供字符串级的 `edit`/`write` 工具，没有任何**会落盘**的结构化 diff 应用工具。`dsh-patch-apply` 填补了这一空白：它解析 unified diff，逐 hunk 应用（含模糊匹配与行号偏移修正），让整个过程**要么全成功、要么全回滚**，并在应用前生成**反向补丁**以实现字节级精确回滚（undo）。
 
 零运行时依赖。TypeScript 源码、纯对象工具定义、使用 Node 内置测试运行器。
@@ -34,6 +36,9 @@ dsh 官方只提供字符串级的 `edit`/`write` 工具，没有任何**会落�
 ```sh
 # 已发布到 registry
 dsh plugin --profile <name> add dsh-patch-apply
+
+# 或直接从此仓库安装
+dsh plugin --profile <name> add github:JohnXu22786/apply-patch
 
 # 或使用本地检出目录
 dsh plugin --profile <name> add /path/to/apply-patch
