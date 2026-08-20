@@ -2,6 +2,14 @@
   "name": "dsh-patch-apply",
   "version": "1.0.0",
   "description": "dsh-patch-apply — apply structured unified diffs (git format) to the real filesystem inside DeepSeek Harness: multi-file/multi-hunk parsing, fuzzy hunk location with line-offset correction, all-or-nothing application with precise conflict reports, automatic reverse-patch undo, dry-run, and undo journaling. Zero runtime dependencies.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JohnXu22786/apply-patch.git"
+  },
+  "homepage": "https://github.com/JohnXu22786/apply-patch#readme",
+  "bugs": {
+    "url": "https://github.com/JohnXu22786/apply-patch/issues"
+  },
   "type": "module",
   "main": "./build/src/index.js",
   "types": "./build/src/index.d.ts",
@@ -34,6 +42,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "node -e \"require('node:fs').rmSync('build', { recursive: true, force: true })\"",
+    "prepack": "npm run build",
     "pretest": "npm run build",
     "test": "node --test build/test/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
