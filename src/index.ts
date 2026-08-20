@@ -25,10 +25,14 @@ export const VERSION = '1.0.0'
 
 /**
  * Mount the four patch tools on `ctx.tools`.
+ *
+ * Returns a disposer that unregisters the tools when the plugin is unmounted,
+ * matching the dsh/cordis `apply` contract.
+ *
  * @param ctx - the Cordis context with the `tools` service injected.
  * @param config - optional plugin configuration (defaults applied here).
  */
-export function apply(ctx: ToolContext, config: Config = {}): void {
+export function apply(ctx: ToolContext, config: Config = {}): () => void {
   const cfg: Config = {
     defaultRoot: config.defaultRoot ?? process.cwd(),
     io: config.io ?? 'node',
@@ -36,10 +40,15 @@ export function apply(ctx: ToolContext, config: Config = {}): void {
     undo: config.undo ?? true,
     strictSha: config.strictSha ?? false,
   }
-  ctx.tools.register(applyTool(ctx, cfg))
-  ctx.tools.register(dryRunTool(ctx, cfg))
-  ctx.tools.register(reverseTool(ctx, cfg))
-  ctx.tools.register(statTool(ctx, cfg))
+  const disposers: Array<(() => void) | void> = [
+    ctx.tools.register(applyTool(ctx, cfg)),
+    ctx.tools.register(dryRunTool(ctx, cfg)),
+    ctx.tools.register(reverseTool(ctx, cfg)),
+    ctx.tools.register(statTool(ctx, cfg)),
+  ]
+  return () => {
+    for (const dispose of disposers) dispose?.()
+  }
 }
 
 /** Config schema marker so the loader can expose structured configuration. */
