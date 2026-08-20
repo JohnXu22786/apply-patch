@@ -161,6 +161,46 @@ test('reverse prints a reversible patch without applying', async () => {
   }
 })
 
+test('reverse --out writes the reverse patch to a file, not stdout', async () => {
+  const { dir, cleanup } = await help.makeTempDir()
+  try {
+    await help.write(dir, 'f.txt', 'a\nb\n')
+    const patchFile = path.join(dir, 'p.patch')
+    await fsp.writeFile(patchFile, [
+      'diff --git a/f.txt b/f.txt',
+      '--- a/f.txt',
+      '+++ b/f.txt',
+      '@@ -1,2 +1,2 @@',
+      ' a',
+      '-b',
+      '+B',
+    ].join('\n') + '\n', 'utf8')
+    const outFile = path.join(dir, 'reversed.patch')
+    const cap = streams()
+    const code = await cli(['reverse', '--out', outFile, patchFile], dir, cap)
+    assert.equal(code, 0, cap.err.join('\n'))
+    assert.equal(cap.out.join('\n'), '')
+    const written = await fsp.readFile(outFile, 'utf8')
+    assert.match(written, /diff --git/)
+    assert.match(written, /\+b/)
+    assert.equal(await help.read(path.join(dir, 'f.txt')), 'a\nb\n')
+  } finally {
+    await cleanup()
+  }
+})
+
+test('--version prints the tool version and exits 0', async () => {
+  const cap = streams()
+  const code = await cli(['--version'], process.cwd(), cap)
+  assert.equal(code, 0)
+  assert.match(cap.out.join('\n'), /^dsh-patch \d+\.\d+\.\d+/)
+
+  const cap2 = streams()
+  const code2 = await cli(['-v'], process.cwd(), cap2)
+  assert.equal(code2, 0)
+  assert.match(cap2.out.join('\n'), /^dsh-patch \d+\.\d+\.\d+/)
+})
+
 test('usage errors exit 2 with help text', async () => {
   const cap = streams()
   const code = await cli(['bogus-command', 'x'], process.cwd(), cap)
