@@ -1,0 +1,20 @@
+# Example unified diff used by apply-example.mjs
+#
+# Target files (in the same directory as the patch):
+#   greeting.txt  — "hello\nworld\ngoodbye\n"
+#   notes/idea.txt — "first draft\n"
+diff --git a/greeting.txt b/greeting.txt
+--- a/greeting.txt
++++ b/greeting.txt
+@@ -1,3 +1,3 @@
+ hello
+-world
++earth
+ goodbye
+diff --git a/notes/idea.txt b/notes/idea.txt
+new file mode 100644
+--- /dev/null
++++ b/notes/idea.txt
+@@ -0,0 +1,2 @@
++first draft
++revised

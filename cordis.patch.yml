@@ -1,0 +1,21 @@
+# dsh-patch-apply bundle layer.
+#
+# Inserts one Cordis plugin row into the profile. The loader resolves the row's
+# `name` (this package) and mounts its module, which named-exports
+# { name, inject, apply } and registers the four tools on the harness tool
+# registry (ctx.tools): patch_apply, patch_dry_run, patch_reverse, patch_stat.
+#
+# Install into a profile:
+#   dsh plugin --profile <name> add dsh-patch-apply        # published
+#   dsh plugin --profile <name> add /absolute/path/to/apply-patch   # local checkout
+#
+# Optional config (all optional; applied in the profile's cordis.patch.yml as a
+# later layer targeting this row's id):
+#   defaultRoot: /abs/workspace      # base dir for relative patch paths
+#   io: node | ctx-fs                # node (default) or route through ctx.fs
+#   fuzzContext: 3                   # max leading context lines droppable
+#   undo: true                       # persist an undo journal on patch_apply
+#   strictSha: false                 # treat index SHA-1 mismatches as conflicts
+- insert:
+    - id: patch-apply
+      name: dsh-patch-apply

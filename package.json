@@ -1,0 +1,64 @@
+{
+  "name": "dsh-patch-apply",
+  "version": "1.0.0",
+  "description": "dsh-patch-apply — apply structured unified diffs (git format) to the real filesystem inside DeepSeek Harness: multi-file/multi-hunk parsing, fuzzy hunk location with line-offset correction, all-or-nothing application with precise conflict reports, automatic reverse-patch undo, dry-run, and undo journaling. Zero runtime dependencies.",
+  "type": "module",
+  "main": "./build/src/index.js",
+  "types": "./build/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/src/index.d.ts",
+      "import": "./build/src/index.js"
+    },
+    "./cli": {
+      "types": "./build/src/cli.d.ts",
+      "import": "./build/src/cli.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-patch": "./bin/dsh-patch.js"
+  },
+  "files": [
+    "build",
+    "bin",
+    "cordis.patch.yml",
+    "examples",
+    "src",
+    "test",
+    "tsconfig.json",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"require('node:fs').rmSync('build', { recursive: true, force: true })\"",
+    "pretest": "npm run build",
+    "test": "node --test build/test/*.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "patch",
+    "diff",
+    "unified-diff",
+    "apply",
+    "undo"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
