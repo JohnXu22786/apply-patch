@@ -33,20 +33,44 @@ function fakeContext(): { ctx: ToolContext; defs: ToolDefinition[]; disposed: ()
   return { ctx, defs, disposed: () => disposedCount }
 }
 
+/** Recursively verify that no JSON Schema node uses a non-standard boolean `required` flag. */
+function assertValidJsonSchema(node: unknown, path: string): void {
+  if (node === null || typeof node !== 'object') return
+  if (Array.isArray(node)) {
+    for (let i = 0; i < node.length; i++) {
+      assertValidJsonSchema(node[i], `${path}[${i}]`)
+    }
+    return
+  }
+  const obj = node as Record<string, unknown>
+  if ('required' in obj) {
+    assert.ok(
+      Array.isArray(obj.required) && obj.required.every((item) => typeof item === 'string'),
+      `${path}.required must be a string[], got ${JSON.stringify(obj.required)}`,
+    )
+  }
+  for (const [key, child] of Object.entries(obj)) {
+    if (key === 'required') continue
+    assertValidJsonSchema(child, `${path}.${key}`)
+  }
+}
+
 /** Validate a value against a closed `additionalProperties:false` schema. */
-function assertMatchesSchema(value: Record<string, unknown>, schema: { properties?: Record<string, object>; required?: boolean }): void {
+function assertMatchesSchema(value: Record<string, unknown>, schema: { properties?: Record<string, object>; required?: string[] }): void {
   const props = schema.properties ?? {}
+  const required = new Set(schema.required ?? [])
   const keys = Object.keys(value).sort()
   const expected = Object.keys(props).sort()
   assert.deepEqual(keys, expected, `emitted keys ${JSON.stringify(keys)} do not match schema ${JSON.stringify(expected)}`)
+  for (const reqKey of required) {
+    if (!(reqKey in value)) {
+      assert.fail(`required schema property ${reqKey} missing from value`)
+    }
+  }
   for (const [key, node] of Object.entries(props)) {
     const n = node as {
-      required?: boolean
       type?: string | string[]
       oneOf?: Array<{ type: string | string[] }>
-    }
-    if (n.required === true && !(key in value)) {
-      assert.fail(`required schema property ${key} missing from value`)
     }
     const v = value[key]
     const matchesType = (t: string | string[]): boolean => {
@@ -76,7 +100,7 @@ test('apply() returns a disposer that unregisters the four tools on unmount', ()
   assert.equal(disposed(), 4)
 })
 
-test('apply() registers exactly the four patch tools with the required parameter', () => {
+test('apply() registers all four patch tools with valid JSON Schema parameter and output definitions', () => {
   const { ctx, defs } = fakeContext()
   apply(ctx, { defaultRoot: process.cwd() })
   assert.deepEqual(defs.map((d) => d.name).sort(), ['patch_apply', 'patch_dry_run', 'patch_reverse', 'patch_stat'])
@@ -85,12 +109,18 @@ test('apply() registers exactly the four patch tools with the required parameter
     assert.equal(typeof def.output.render, 'function')
     assert.equal(typeof def.presentCall, 'function')
     assert.equal(typeof def.description, 'string')
-  }
-  for (const name of ['patch_apply', 'patch_dry_run', 'patch_reverse']) {
-    const def = defs.find((d) => d.name === name)!
-    const param = def.parameters.patch as { required?: boolean; type?: string }
-    assert.equal(param.required, true)
-    assert.equal(param.type, 'string')
+    assertValidJsonSchema(def.parameters, `${def.name}.parameters`)
+    assertValidJsonSchema(def.output.schema, `${def.name}.output.schema`)
+    const params = def.parameters as {
+      type?: string
+      additionalProperties?: boolean
+      properties?: Record<string, { type?: string }>
+      required?: string[]
+    }
+    assert.equal(params.type, 'object')
+    assert.equal(params.additionalProperties, false)
+    assert.deepEqual(params.required, ['patch'])
+    assert.equal(params.properties?.patch?.type, 'string')
   }
 })
 

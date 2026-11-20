@@ -2,10 +2,10 @@
  * The four dsh tools this bundle registers: `patch_apply`, `patch_dry_run`,
  * `patch_reverse`, `patch_stat`.
  *
- * The registrations are plain definitions (no helper dependency): parameters
- * use the standard `ParameterSchemaSpec` shape the harness's tool registry
- * accepts, `output.schema` declares the canonical JSON, and `render` formats
- * the model-facing text. Everything is applied through the shared
+ * The registrations are plain definitions (no helper dependency): both `parameters`
+ * and `output.schema` use standard JSON Schema object definitions with parent-level
+ * `required` arrays accepted by the harness's tool registry and model providers,
+ * and `render` formats the model-facing text. Everything is applied through the shared
  * {@link applyPatchText} / {@link statPatch} core.
  *
  * **Filesystem mode.** `config.io` selects the backend:
@@ -41,7 +41,7 @@ export interface ToolContext {
 export interface ToolDefinition {
   name: string
   description: string
-  parameters: Record<string, object>
+  parameters: Record<string, unknown>
   output: {
     schema: object
     render(args: Record<string, unknown>, value: Record<string, unknown>): Array<{ type: string; text: string }>
@@ -137,25 +137,31 @@ export function applyTool(ctx: ToolContext, config: Config): ToolDefinition {
       + 'the whole patch is rejected and nothing is written. A reverse patch is computed and an undo journal is written before mutating, so applying the reverse '
       + 'patch restores the exact prior state. Binary files are skipped and reported. Prefer over string-level edit/write when you have a patch.',
     parameters: {
-      patch: { type: 'string', required: true, description: 'The unified diff text (git format) to apply.' },
-      cwd: { type: 'string', description: 'Base directory for relative paths in the patch; defaults to the plugin defaultRoot.' },
-      dry_run: { type: 'boolean', description: 'Validate only: report conflicts and the files/hunks that would change, never write.' },
-      verify_sha: { type: 'boolean', description: 'Treat index-line blob SHA-1 mismatches as hard conflicts (default false).' },
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        patch: { type: 'string', description: 'The unified diff text (git format) to apply.' },
+        cwd: { type: 'string', description: 'Base directory for relative paths in the patch; defaults to the plugin defaultRoot.' },
+        dry_run: { type: 'boolean', description: 'Validate only: report conflicts and the files/hunks that would change, never write.' },
+        verify_sha: { type: 'boolean', description: 'Treat index-line blob SHA-1 mismatches as hard conflicts (default false).' },
+      },
+      required: ['patch'],
     },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          ok: { type: 'boolean', required: true },
-          dryRun: { type: 'boolean', required: true },
+          ok: { type: 'boolean' },
+          dryRun: { type: 'boolean' },
           files: { type: 'array', items: { type: 'object' } },
           conflicts: { type: 'array', items: { type: 'object' } },
           errors: { type: 'array', items: { type: 'object' } },
           notes: { type: 'array', items: { type: 'string' } },
-          reversePatch: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
-          undoFile: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+          reversePatch: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+          undoFile: { oneOf: [{ type: 'string' }, { type: 'null' }] },
         },
+        required: ['ok', 'dryRun', 'reversePatch', 'undoFile'],
       },
       render: (_args, value) => [{ type: 'text', text: summarizeReport(value as unknown as ApplyReport) }],
     },
@@ -183,24 +189,30 @@ export function dryRunTool(ctx: ToolContext, config: Config): ToolDefinition {
       'Validate whether a unified diff can be applied (parse + per-hunk location with fuzzy context tolerance and offset correction): '
       + 'reports every conflicting hunk (file, hunk number, expected vs actual content) and every would-be change, writes NOTHING.',
     parameters: {
-      patch: { type: 'string', required: true, description: 'The unified diff text to validate.' },
-      cwd: { type: 'string', description: 'Base directory for relative paths; defaults to the plugin defaultRoot.' },
-      verify_sha: { type: 'boolean', description: 'Treat index-line blob SHA-1 mismatches as hard conflicts.' },
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        patch: { type: 'string', description: 'The unified diff text to validate.' },
+        cwd: { type: 'string', description: 'Base directory for relative paths; defaults to the plugin defaultRoot.' },
+        verify_sha: { type: 'boolean', description: 'Treat index-line blob SHA-1 mismatches as hard conflicts.' },
+      },
+      required: ['patch'],
     },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          ok: { type: 'boolean', required: true },
-          dryRun: { type: 'boolean', required: true },
+          ok: { type: 'boolean' },
+          dryRun: { type: 'boolean' },
           files: { type: 'array', items: { type: 'object' } },
           conflicts: { type: 'array', items: { type: 'object' } },
           errors: { type: 'array', items: { type: 'object' } },
           notes: { type: 'array', items: { type: 'string' } },
-          reversePatch: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
-          undoFile: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+          reversePatch: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+          undoFile: { oneOf: [{ type: 'string' }, { type: 'null' }] },
         },
+        required: ['ok', 'dryRun', 'reversePatch', 'undoFile'],
       },
       render: (_args, value) => [{ type: 'text', text: summarizeReport(value as unknown as ApplyReport) }],
     },
@@ -229,19 +241,25 @@ export function reverseTool(ctx: ToolContext, config: Config): ToolDefinition {
       'Compute the reverse of a unified diff (swaps additions/deletions, inverts renames, turns creates into deletes and vice versa) '
       + 'validating applicability first (dry-run, nothing is written). The reverse patch, applied later, restores the exact prior state.',
     parameters: {
-      patch: { type: 'string', required: true, description: 'The unified diff text to reverse.' },
-      cwd: { type: 'string', description: 'Base directory for relative paths; defaults to the plugin defaultRoot.' },
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        patch: { type: 'string', description: 'The unified diff text to reverse.' },
+        cwd: { type: 'string', description: 'Base directory for relative paths; defaults to the plugin defaultRoot.' },
+      },
+      required: ['patch'],
     },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          ok: { type: 'boolean', required: true },
-          patch: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+          ok: { type: 'boolean' },
+          patch: { oneOf: [{ type: 'string' }, { type: 'null' }] },
           conflicts: { type: 'array', items: { type: 'object' } },
           errors: { type: 'array', items: { type: 'object' } },
         },
+        required: ['ok', 'patch'],
       },
       render: (_args, value) => {
         const v = value as unknown as { ok: boolean; patch?: string }
@@ -276,21 +294,27 @@ export function statTool(_ctx: ToolContext, _config: Config): ToolDefinition {
       'Summarize a unified diff without touching the filesystem: per-file kind (create/delete/modify/rename/copy/mode/binary), hunk counts, '
       + 'added/deleted/context line counts, and totals.',
     parameters: {
-      patch: { type: 'string', required: true, description: 'The unified diff text to summarize.' },
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        patch: { type: 'string', description: 'The unified diff text to summarize.' },
+      },
+      required: ['patch'],
     },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          fileCount: { type: 'number', required: true },
+          fileCount: { type: 'number' },
           files: { type: 'array', items: { type: 'object' } },
-          totalHunks: { type: 'number', required: true },
-          totalAdded: { type: 'number', required: true },
-          totalDeleted: { type: 'number', required: true },
-          totalContext: { type: 'number', required: true },
-          binaryCount: { type: 'number', required: true },
+          totalHunks: { type: 'number' },
+          totalAdded: { type: 'number' },
+          totalDeleted: { type: 'number' },
+          totalContext: { type: 'number' },
+          binaryCount: { type: 'number' },
         },
+        required: ['fileCount', 'totalHunks', 'totalAdded', 'totalDeleted', 'totalContext', 'binaryCount'],
       },
       render: (_args, value) => [{ type: 'text', text: formatStat(value as unknown as PatchStat) }],
     },
